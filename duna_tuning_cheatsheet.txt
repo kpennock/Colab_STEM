@@ -1,0 +1,107 @@
+DUNA TRANSFER: FINE-TUNING THE MID-COURSE NODE  (Mac, zsh)
+=========================================================
+
+(A .bat file only runs on Windows. On your iMac a text cheat sheet like this
+ one is the right tool. Keep it open next to the terminal.)
+
+ONE-TIME SETUP EACH SESSION
+---------------------------
+  cd ~/Education/CodeProjects/Colab/Colab_STEM
+  source .venv/bin/activate
+
+  In KSP: kRPC server running (Start Server), ship active, game NOT paused
+  by the menu, and ONE maneuver node placed halfway between Kerbin and Duna.
+  (If you have several nodes the scripts use the LAST one.)
+
+
+STEP 1  SAVE THE GAME FIRST
+---------------------------
+  Esc -> Save Game -> name it, e.g.  before-pe-tune
+  (Fn+F5 quicksaves on a Mac.)
+
+
+STEP 2  CHECK WHERE YOU STAND
+-----------------------------
+  python duna_encounter_check.py
+
+  It tells you either:
+    - closest approach to Duna (no encounter yet, go to STEP 3), or
+    - "DUNA ENCOUNTER: predicted periapsis ... km" (go to STEP 4)
+
+
+STEP 3  NO ENCOUNTER YET: AIM AT DUNA
+-------------------------------------
+  python duna_lever_advisor.py --reset            # preview: aim at Duna
+  python duna_lever_advisor.py --reset --apply    # keep it
+
+  --reset starts from a zero node, which gives the cleanest answer.
+  It only keeps a result that is actually better than what you had.
+  Then run STEP 2 again to confirm an encounter shows up.
+
+
+STEP 4  TUNE THE PERIAPSIS (e.g. 30 km above Duna)
+--------------------------------------------------
+  python duna_lever_advisor.py --pe-km 30            # PREVIEW only, node untouched
+  python duna_lever_advisor.py --pe-km 30 --apply    # keep the tuned node
+
+  Run the --apply command a second time if it is still a few km off.
+  Each run starts from where the last one ended.
+
+  Target guide:   20-40 km  aerobraking (Duna's air reaches ~50 km)
+                  60-100 km above the air; use for a propulsive capture burn
+
+
+STEP 5  CONFIRM
+---------------
+  python duna_encounter_check.py
+  Look for: "predicted periapsis NN km above Duna's surface"
+
+
+STEP 6  WHEN TO CORRECT: EARLY IS CHEAPER
+-----------------------------------------
+  The miss at Duna is roughly (delta-v) x (time left). Fixing the same
+  error costs about 10x more delta-v with 1/10 of the trip left than
+  with half of it left. So:
+
+   1. Correct RIGHT AFTER the departure burn finishes (the burn is never
+      perfect; a 1% error on ~1000 m/s is ~10 m/s of miss). Do STEPS 1-5
+      then. This one does most of the work and costs the least.
+   2. Re-run duna_encounter_check.py. If the periapsis is still off by
+      more than you can accept, do one more tiny trim EARLY (still
+      with most of the trip left).
+   3. Only trim near Duna (last day before entering its sphere of
+      influence) to catch a leftover error. It costs more per km.
+  The prediction line does not drift in KSP, so waiting gains nothing.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+  Restore the node values I gave you earlier:
+      python restore_node.py                      # defaults 5.0 49.5 229.9
+      python restore_node.py 4.8 0.9 1.0          # or any three numbers
+  or:
+      python duna_lever_advisor.py --set 4.8 0.9 1.0 --apply
+
+  Or just reload the named save from STEP 1.
+
+  Check you have the newest script:
+      grep -c "def tune_periapsis" duna_lever_advisor.py     (should print 1)
+      grep -c "def optimize" duna_lever_advisor.py           (should print 1)
+
+  Stuck terminal showing   function dquote>   : press Ctrl+C.
+
+
+WHAT THE THREE NODE NUMBERS ARE
+-------------------------------
+  prograde  speed up / slow down along your path (biggest effect on timing
+            and the size of the miss)
+  normal    sideways, out of your orbit plane (fixes left/right miss)
+  radial    toward / away from the Sun (small effect, fine adjustment)
+  Units are m/s of delta-v. Mid-course corrections are usually under 10 m/s.
+
+
+NOTES
+-----
+  - The script never applies a change that makes things worse.
+  - Without --apply the node is always put back exactly as it was.
+  - The game must be running and unpaused for the numbers to update.
